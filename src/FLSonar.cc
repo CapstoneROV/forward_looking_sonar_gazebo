@@ -522,10 +522,28 @@ void FLSonar::GetSonarImage()
 //////////////////////////////////////////////////
 void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
 {
-  for (int i_beam = 0; i_beam < this->beamCount - 1; i_beam++)
+  // Accurate pixels -> beams transformation
+  static bool init = false;
+  static float focal_length = this->imageWidth / (2 * tan(this->HorzFOV() / 2));
+  static std::vector<int> beam_start_pixels;
+  if (!init) {
+    beam_start_pixels.assign(this->beamCount + 1, 0);
+    for (int i_beam = 0; i_beam <= this->beamCount; i_beam++)
+      beam_start_pixels[i_beam] = floor(
+        focal_length * tan(this->HorzFOV() * (-1.0 / 2 + i_beam * 1.0 / this->beamCount))
+        + this->imageWidth / 2
+      );
+    init = true;
+  }
+
+  for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
   {
-    cv::Mat roi = this->rawImage(cv::Rect(i_beam * ceil(this->imageWidth / this->beamCount), 0,
-      ceil(this->imageWidth / this->beamCount), this->rawImage.rows));
+    cv::Mat roi = this->rawImage(cv::Rect(beam_start_pixels[i_beam], 0,
+      beam_start_pixels[i_beam + 1] - beam_start_pixels[i_beam], this->rawImage.rows));
+
+    // Original: distorted (not taking in account sensor plane)
+    // cv::Mat roi = this->rawImage(cv::Rect(i_beam * ceil(this->imageWidth / this->beamCount), 0,
+    //   ceil(this->imageWidth / this->beamCount), this->rawImage.rows));
 
 
     this->sonarBinsDepth.assign(this->binCount, 0);
