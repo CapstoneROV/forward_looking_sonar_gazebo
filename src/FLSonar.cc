@@ -536,7 +536,6 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
 
 
     // calculate depth histogram
-    float* ptr = reinterpret_cast<float*>(roi.data);
     for (int i = 0; i < width * height; i++)
     {
       int xIndex = i / height;
@@ -552,15 +551,12 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
       int xIndex = i / height;
       int yIndex = (i % height) / height * width;
       int bin_idx = roi.at<cv::Vec3f>(xIndex, yIndex)[1] * (this->binCount - 1);
-      float intensity = (1.0 / this->sonarBinsDepth[bin_idx]) * this->Sigmoid(roi.at<cv::Vec3f>(xIndex, yIndex)[0]);
+      float intensity = (1.0 / this->sonarBinsDepth[bin_idx]) * roi.at<cv::Vec3f>(xIndex, yIndex)[0]; // this->Sigmoid(roi.at<cv::Vec3f>(xIndex, yIndex)[0]);
       this->bins[bin_idx] += intensity;
     }
-    int id_beam = static_cast<int>(((-this->HorzFOV() / 2 + i_beam * this->HorzFOV()
-      / this->beamCount + this->HorzFOV() / 2)
-      / (this->HorzFOV())) * (this->beamCount));
 
     for (size_t i = 0; i < this->binCount; ++i)
-      _accumData[id_beam * this->binCount + i] = this->bins[i];
+      _accumData[i_beam * this->binCount + i] = this->bins[i];
   }
 }
 
