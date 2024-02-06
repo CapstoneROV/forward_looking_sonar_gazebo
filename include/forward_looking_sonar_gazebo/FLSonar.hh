@@ -421,6 +421,21 @@ protected:
 protected:
   std::vector<float> accumData;
 
+  /**
+   * @brief Additional variables - Quan
+   *
+   */
+
+  //// \brief Mats for remapping from camera pixels to sonar beams
+protected:
+  cv::Mat map_x, map_y, dest;
+
+  //// \brief Focal length of camera in pixel
+protected:
+  double focal_length;
+
+  
+
 /// \brief Flag to check if the message was updated.
 private:
   bool bUpdated;

@@ -78,7 +78,6 @@ void FLSonar::Load(sdf::ElementPtr _sdf)
   this->camera->setAutoAspectRatio(0);
 
 
-
   this->SetFarClip(gazebo::SDFTool::GetSDFElement<double>(_sdf, "far", "clip"));
   this->SetNearClip(gazebo::SDFTool::GetSDFElement<double>(_sdf, "near", "clip"));
 
@@ -87,6 +86,30 @@ void FLSonar::Load(sdf::ElementPtr _sdf)
 
   this->SetBinCount(gazebo::SDFTool::GetSDFElement<double>(_sdf, "bin_count"));
   this->SetBeamCount(gazebo::SDFTool::GetSDFElement<double>(_sdf, "beam_count"));
+
+
+  // Accurate pixels -> beams transformation
+  this->dest = cv::Mat(cv::Size(this->beamCount, this->imageHeight), CV_32FC3);
+  this->map_x = cv::Mat(this->dest.size(), CV_32FC1);
+  this->map_y = cv::Mat(this->dest.size(), CV_32FC1);
+  this->focal_length = this->imageWidth / (2 * tan(this->HorzFOV() / 2));
+  std::vector<int> beam_start_pixels;
+  beam_start_pixels.assign(this->beamCount + 1, 0);
+  for (int i_beam = 0; i_beam <= this->beamCount; i_beam++)
+    beam_start_pixels[i_beam] = floor(
+      focal_length * tan(this->HorzFOV() * (-1.0 / 2 + i_beam * 1.0 / this->beamCount))
+      + this->imageWidth / 2
+    );
+
+  // Create remapping for the whole rawImage: https://docs.opencv.org/3.4/d1/da0/tutorial_remap.html
+  for (int i = 0; i < this->map_x.rows; i++)
+  {
+    for (int j = 0; j < this->map_x.cols; j++)
+    {
+      this->map_x.at<float>(i, j) = (beam_start_pixels[j + 1] + beam_start_pixels[j]) * 1.0 / 2; // Get approximate location of beam
+      this->map_y.at<float>(i, j) = i;
+    }
+  }
 }
 
 //////////////////////////////////////////////////
@@ -523,39 +546,11 @@ void FLSonar::GetSonarImage()
 void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
 {
   // Accurate pixels -> beams transformation
-  static bool init = false;
-  static cv::Mat
-    dst(cv::Size(this->beamCount, this->rawImage.rows), this->rawImage.type()),
-    map_x(dst.size(), CV_32FC1),
-    map_y(dst.size(), CV_32FC1);
-
-  static float focal_length = this->imageWidth / (2 * tan(this->HorzFOV() / 2));
-  static std::vector<int> beam_start_pixels;
-  if (!init) {
-    beam_start_pixels.assign(this->beamCount + 1, 0);
-    for (int i_beam = 0; i_beam <= this->beamCount; i_beam++)
-      beam_start_pixels[i_beam] = floor(
-        focal_length * tan(this->HorzFOV() * (-1.0 / 2 + i_beam * 1.0 / this->beamCount))
-        + this->imageWidth / 2
-      );
-
-    // Create remapping for the whole rawImage: https://docs.opencv.org/3.4/d1/da0/tutorial_remap.html
-    for (int i = 0; i < map_x.rows; i++)
-    {
-      for (int j = 0; j < map_x.cols; j++)
-      {
-        map_x.at<float>(i, j) = (beam_start_pixels[j + 1] + beam_start_pixels[j]) * 1.0 / 2; // Get approximate location of beam
-        map_y.at<float>(i, j) = i;
-      }
-    }
-    init = true;
-  }
-
-  remap(this->rawImage, dst, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+  remap(this->rawImage, this->dest, this->map_x, this->map_y, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
 
   for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
   {
-    cv::Mat roi = dst(cv::Rect(i_beam, 0, 1, this->rawImage.rows));
+    cv::Mat roi = this->dest(cv::Rect(i_beam, 0, 1, this->rawImage.rows));
     // cv::Mat roi = this->rawImage(cv::Rect(beam_start_pixels[i_beam], 0,
     //   beam_start_pixels[i_beam + 1] - beam_start_pixels[i_beam], this->rawImage.rows));
 
