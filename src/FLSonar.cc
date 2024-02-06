@@ -72,10 +72,10 @@ void FLSonar::Load(sdf::ElementPtr _sdf)
 
   Ogre::Radian fov_now(this->vfov);
   this->camera->setFOVy(fov_now);
-  this->camera->setAspectRatio(aspectRatio);
+  this->camera->setAspectRatio(tan(this->HorzFOV() / 2) / tan(this->VertFOV() / 2));
+  // Original: this causes a curve in the resulting sonar image
+  // this->camera->setAspectRatio(aspectRatio);
   this->camera->setAutoAspectRatio(0);
-
-  this->SetHorzFOV(this->GetVertFOV() * aspectRatio);
 
 
 
