@@ -524,6 +524,11 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
 {
   // Accurate pixels -> beams transformation
   static bool init = false;
+  static cv::Mat
+    dst(cv::Size(this->beamCount, this->rawImage.rows), this->rawImage.type()),
+    map_x(dst.size(), CV_32FC1),
+    map_y(dst.size(), CV_32FC1);
+
   static float focal_length = this->imageWidth / (2 * tan(this->HorzFOV() / 2));
   static std::vector<int> beam_start_pixels;
   if (!init) {
@@ -533,13 +538,26 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
         focal_length * tan(this->HorzFOV() * (-1.0 / 2 + i_beam * 1.0 / this->beamCount))
         + this->imageWidth / 2
       );
+
+    // Create remapping for the whole rawImage: https://docs.opencv.org/3.4/d1/da0/tutorial_remap.html
+    for (int i = 0; i < map_x.rows; i++)
+    {
+      for (int j = 0; j < map_x.cols; j++)
+      {
+        map_x.at<float>(i, j) = (beam_start_pixels[j + 1] + beam_start_pixels[j]) * 1.0 / 2; // Get approximate location of beam
+        map_y.at<float>(i, j) = i;
+      }
+    }
     init = true;
   }
 
+  remap(this->rawImage, dst, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+
   for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
   {
-    cv::Mat roi = this->rawImage(cv::Rect(beam_start_pixels[i_beam], 0,
-      beam_start_pixels[i_beam + 1] - beam_start_pixels[i_beam], this->rawImage.rows));
+    cv::Mat roi = dst(cv::Rect(i_beam, 0, 1, this->rawImage.rows));
+    // cv::Mat roi = this->rawImage(cv::Rect(beam_start_pixels[i_beam], 0,
+    //   beam_start_pixels[i_beam + 1] - beam_start_pixels[i_beam], this->rawImage.rows));
 
     // Original: distorted (not taking in account sensor plane)
     // cv::Mat roi = this->rawImage(cv::Rect(i_beam * ceil(this->imageWidth / this->beamCount), 0,
