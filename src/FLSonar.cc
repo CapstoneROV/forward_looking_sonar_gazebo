@@ -548,6 +548,10 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
   // Accurate pixels -> beams transformation
   remap(this->rawImage, this->dest, this->map_x, this->map_y, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
 
+  // Add noise
+  cv::Mat noisy_image = cv::Mat::zeros(this->beamCount, this->binCount, CV_32FC1);
+  cv::randn(noisy_image, 0, 0.15);
+
   for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
   {
     cv::Mat roi = this->dest(cv::Rect(i_beam, 0, 1, this->rawImage.rows));
@@ -586,9 +590,19 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
       this->bins[bin_idx] += intensity;
     }
 
-    for (size_t i = 0; i < this->binCount; ++i)
-      _accumData[i_beam * this->binCount + i] = this->bins[i];
+    // for (size_t i = 0; i < this->binCount; ++i)
+    //   _accumData[i_beam * this->binCount + i] = this->bins[i];
+
+    for (int i = 0; i < this->binCount; ++i)
+      noisy_image.at<float>(i_beam, i) += this->bins[i];
   }
+
+  // Add blur
+  cv::GaussianBlur(noisy_image, noisy_image, cv::Size(15, 9), 0);
+
+  for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
+    for (size_t i = 0; i < this->binCount; ++i)
+      _accumData[i_beam * this->binCount + i] = noisy_image.at<float>(i_beam, i);
 }
 
 //////////////////////////////////////////////////
