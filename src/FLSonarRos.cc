@@ -87,6 +87,9 @@ void FLSonarRos::Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf)
   this->sonarMsgPub = this->rosNode->advertise<sonar_msgs::SonarStamped>(
                                     _sdf->Get<std::string>("topic") + "/beams_fls", 0);
 
+  // Determine if color scheme is disabled, default false
+  this->disable_color = _sdf->Get<bool>("disable_color");
+
   this->bDebug = false;
   if (_sdf->HasElement("debug"))
   {
@@ -129,13 +132,23 @@ void FLSonarRos::OnPostRender()
     cv::Mat sonarImage = this->sonar->SonarImage();
     cv::Mat sonarMask = this->sonar->SonarMask();
 
-    cv::Mat B = cv::Mat::zeros(sonarImage.rows, sonarImage.cols, CV_8UC1);
-    sonarImage.convertTo(B, CV_8UC1, 255);
+    // Apply color map if disable_color false / not specified
+    sensor_msgs::ImagePtr msg;
+    if (!this->disable_color) {
+      cv::Mat B = cv::Mat::zeros(sonarImage.rows, sonarImage.cols, CV_8UC1);
+      sonarImage.convertTo(B, CV_8UC1, 255);
 
-    cv::applyColorMap(B, B, cv::COLORMAP_WINTER);
-    B.setTo(0, ~sonarMask);
+      cv::applyColorMap(B, B, cv::COLORMAP_WINTER);
+      B.setTo(0, ~sonarMask);
 
-    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", B).toImageMsg();
+      msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", B).toImageMsg();
+    }
+    else 
+    {
+      cv::Mat B = cv::Mat::zeros(sonarImage.rows, sonarImage.cols, CV_16UC1);
+      sonarImage.convertTo(B, CV_16UC1, 255);
+      msg = cv_bridge::CvImage(std_msgs::Header(), "mono16", B).toImageMsg();
+    }
     this->sonarImagePub.publish(msg);
 
     this->sonarMsgPub.publish(this->sonar->SonarRosMsg(this->world));

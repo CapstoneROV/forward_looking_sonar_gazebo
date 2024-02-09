@@ -100,6 +100,9 @@ private:
   // Sonar message pub
   ros::Publisher sonarMsgPub;
 
+  // Boolean for disabling output color scheme
+  bool disable_color;
+
   // Debug flag
   bool bDebug;
 };
