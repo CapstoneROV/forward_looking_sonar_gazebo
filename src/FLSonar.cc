@@ -550,7 +550,7 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
 
   // Add noise
   cv::Mat noisy_image = cv::Mat::zeros(this->beamCount, this->binCount, CV_32FC1);
-  cv::randn(noisy_image, 0, 0.15);
+  cv::randn(noisy_image, 0, 0.25);
 
   for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
   {
@@ -598,7 +598,7 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
   }
 
   // Add blur
-  cv::GaussianBlur(noisy_image, noisy_image, cv::Size(15, 9), 0);
+  cv::GaussianBlur(noisy_image, noisy_image, cv::Size(9, 11), 0);
 
   for (int i_beam = 0; i_beam < this->beamCount; i_beam++)
     for (size_t i = 0; i < this->binCount; ++i)

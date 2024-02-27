@@ -145,9 +145,9 @@ void FLSonarRos::OnPostRender()
     }
     else 
     {
-      cv::Mat B = cv::Mat::zeros(sonarImage.rows, sonarImage.cols, CV_16UC1);
-      sonarImage.convertTo(B, CV_16UC1, 255);
-      msg = cv_bridge::CvImage(std_msgs::Header(), "mono16", B).toImageMsg();
+      cv::Mat B = cv::Mat::zeros(sonarImage.rows, sonarImage.cols, CV_8UC1);
+      sonarImage.convertTo(B, CV_8UC1, 255);
+      msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", B).toImageMsg();
     }
     this->sonarImagePub.publish(msg);
 
