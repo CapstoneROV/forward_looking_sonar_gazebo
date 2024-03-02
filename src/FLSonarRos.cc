@@ -34,7 +34,7 @@ void FLSonarRos::Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf)
 
   std::string worldName = this->sensor->WorldName();
 
-  this->world = physics::get_world("default");
+  this->world = physics::get_world(worldName);
 #if GAZEBO_MAJOR_VERSION >= 8
   parent = this->world->EntityByName(this->sensor->ParentName());
 #else
