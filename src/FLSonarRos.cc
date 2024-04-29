@@ -149,6 +149,10 @@ void FLSonarRos::OnPostRender()
       sonarImage.convertTo(B, CV_8UC1, 255);
       msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", B).toImageMsg();
     }
+    
+    // Set time stamp
+    msg->header.stamp = ros::Time::now();
+
     this->sonarImagePub.publish(msg);
 
     this->sonarMsgPub.publish(this->sonar->SonarRosMsg(this->world));

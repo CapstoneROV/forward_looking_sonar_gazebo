@@ -594,7 +594,7 @@ void FLSonar::CvToSonarBin(std::vector<float> &_accumData)
     //   _accumData[i_beam * this->binCount + i] = this->bins[i];
 
     for (int i = 0; i < this->binCount; ++i)
-      noisy_image.at<float>(i_beam, i) += this->bins[i];
+      noisy_image.at<float>(i_beam, i) += this->bins[i] * (0.5 + 7.0 * i * i / binCount / binCount);
   }
 
   // Add blur
